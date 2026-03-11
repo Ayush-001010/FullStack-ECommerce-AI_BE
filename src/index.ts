@@ -1,0 +1,1 @@
+console.log("Node + TypeScript is working!");
