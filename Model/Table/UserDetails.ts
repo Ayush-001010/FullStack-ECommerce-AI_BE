@@ -1,7 +1,9 @@
 import { DataTypes } from "sequelize";
-import sequelize from "../DBConfig";
+import sequelize from "../dbconfig";
+import bcrypt from 'bcrypt';
 
-const UserDetails = sequelize.define('UserDetails',{
+const UserDetails = sequelize.define('UserDetails',
+    {
     id:{
         type:DataTypes.INTEGER,
         autoIncrement:true,
@@ -27,6 +29,19 @@ const UserDetails = sequelize.define('UserDetails',{
     isAdmin : {
         type:DataTypes.BOOLEAN,
         defaultValue:false
+    }
+}, {
+    hooks:{
+        beforeCreate : async (user : any) => {
+            if(user.Password){
+                user.Password = await bcrypt.hash(user.Password,10);
+            }
+        },
+        beforeUpdate : async (user : any) => {
+            if(user.Password){
+                user.Password = await bcrypt.hash(user.Password,10);
+            }
+        }
     }
 });
 
