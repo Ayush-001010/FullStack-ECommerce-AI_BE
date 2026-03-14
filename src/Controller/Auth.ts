@@ -7,6 +7,33 @@ import axios from "axios";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 
+type JwtPayload = {
+  id?: number;
+  email?: string;
+  isAdmin?: boolean;
+  isGoogleUser?: boolean;
+};
+
+const isLocalhost = (host?: string) => {
+  if (!host) return false;
+  return host.startsWith("localhost") || host.startsWith("127.0.0.1");
+};
+
+const getAuthCookieOptions = (req: Request) => {
+  // For http://localhost dev, cookies must NOT be Secure.
+  // For production over HTTPS, set Secure.
+  const host = req.get("host") || "";
+  const secure = process.env.NODE_ENV === "production" && !isLocalhost(host);
+
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure,
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+};
+
 export const register = async (req: Request, res: Response) => {
   try {
     const { firstName, lastName, email, password } = req.body;
@@ -52,12 +79,7 @@ export const signIn = async (req: Request, res: Response) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("token", token, getAuthCookieOptions(req));
 
     return res.send({ success : true ,  data : {
       email: userJson.Email,
@@ -96,13 +118,7 @@ export const googleAuth = async (req: Request, res: Response) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
+    res.cookie("token", token, getAuthCookieOptions(req));
 
     return res.send({ success: true, msg: "Google authentication successful", data: {
         email: email,
@@ -111,5 +127,39 @@ export const googleAuth = async (req: Request, res: Response) => {
 
   } catch (error) {
     return res.status(500).send({ errMsg: "Something went wrong" });
+  }
+};
+
+export const checkAuth = async (req: Request, res: Response) => {
+  try {
+    const token = (req as any).cookies?.token as string | undefined;
+    console.log("Token from cookies:", token);
+    if (!token) {
+      return res.send({ success: false });
+    }
+
+    let decoded: JwtPayload;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    } catch {
+      return res.send({ success: false });
+    }
+
+    const email = decoded?.email;
+    if (!email) {
+      return res.send({ success: false });
+    }
+
+    const user = await model.UserDetails.findOne({ where: { Email: email } });
+    if (!user) {
+      return res.send({ success: false });
+    }
+
+    return res.send({ success: true , data : {
+      email: user.Email,
+      name: `${user.FirstName} ${user.LastName}`,
+    } });
+  } catch {
+    return res.status(500).send({ success: false });
   }
 };
