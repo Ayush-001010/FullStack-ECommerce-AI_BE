@@ -8,7 +8,7 @@ export const getBannerDetails = async (req: Request, res: Response) => {
       where: {
         IsActive: true,
       },
-      order:[["OrderNumber","DESC"]]
+      order: [["OrderNumber", "DESC"]],
     });
     for (const banner of banners) {
       console.log(banner);
@@ -26,3 +26,40 @@ export const getBannerDetails = async (req: Request, res: Response) => {
     return res.send({ success: false, errMsg: "Something went wrong" });
   }
 };
+
+export const getCategoryDetails = async (req: Request, res: Response) => {
+  try {
+    const { pageNo } = req.body; 
+    const categories = await model.CategoryDetails.findAll({
+      where: {
+        IsActive: true,
+      },
+      order: [["OrderNumber", "DESC"]],
+      limit: 10,
+      offset: (pageNo - 1) * 10,
+    });
+    for (const category of categories) {
+      const { ImageKey } = category.dataValues;
+      const response = await getImages(ImageKey);
+      if (response && response.success) {
+        category.dataValues.ImageURL = response.data;
+      } else {
+        category.dataValues.ImageURL = null;
+      }
+    }
+    return res.send({ success: true, data: categories });
+  } catch (error) {
+    console.error("Error fetching category details:", error);
+    return res.send({ success: false, errMsg: "Something went wrong" });
+  }
+};
+
+export const getProductDetails = async (req: Request, res: Response) => {
+  try {
+    await model.ProductDetails.findAll();
+  }
+  catch (error) {
+    console.error("Error fetching product details:", error);
+    return res.send({ success: false, errMsg: "Something went wrong" });
+  }
+}
