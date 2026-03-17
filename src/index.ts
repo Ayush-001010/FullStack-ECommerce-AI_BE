@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import AuthRoutes from './Routes/Auth';
 import ImageRoutes from './Routes/Image';
 import BannerRoutes from './Routes/Banners';
+import ProductRoutes from './Routes/Product';
 
 const app = express()
 const port = 3000
@@ -38,6 +39,7 @@ app.get('/test', (req, res) => {
 app.use("/auth",AuthRoutes);
 app.use("/image",ImageRoutes);
 app.use("/ecom",BannerRoutes);
+app.use("/product",ProductRoutes);
 
 app.listen(port, () => {
   sequelize.sync().then(() => {
