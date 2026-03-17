@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import model from "../../Model/model";
 import getImages from "../Services/AWSServices";
+import es from "../index";
 
 export const getBannerDetails = async (req: Request, res: Response) => {
   try {
@@ -134,5 +135,41 @@ export const removeFromFavorites = async (req: Request, res: Response) => {
   } catch(error){
     console.log("Error removing from favorites:", error);
     return res.send({ success: false, errMsg: "Something went wrong" });
+  }
+};
+
+export const searchProduct =   async (req : Request, res : Response) => {
+  const { q } = req.query;
+  if (!q) {
+    return res.status(400).json({ error: "Query parameter 'q' is required" });
+  }
+  try {
+    const queryText = String(q); // Explicitly cast q to string
+    const body = {
+      query : {
+        multi_match:{
+          query : queryText,
+          fields : ["Name^2","Description"],
+          fuzziness: "AUTO"
+        }
+      },
+      // suggest:{
+      //   simple_phrase : {
+      //     text : queryText,
+      //     phrase : {
+      //       field : "Name",
+      //       size : 1,
+      //       gram_size : 2,
+      //     }
+      // }
+    // }
+  };
+  const {hits : response} = await es.search({
+    index: "products", body
+  });
+  return res.send({success : true , data : response.hits.map((hit) => hit._source)});
+  } catch (error) {
+    console.error("Error searching products:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
