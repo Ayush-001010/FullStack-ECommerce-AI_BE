@@ -311,3 +311,116 @@ export const getCartItems = async (req: Request, res: Response) => {
     return res.send({ success: false, errMsg: "Something went wrong" });
   }
 };
+
+export const orderProducts = async (req: Request, res: Response) => {
+  try {
+    const {products , userEmail} = req.body;
+    const UserDetails = await model.UserDetails.findOne({
+      where: { Email: userEmail },
+    });
+    if (!UserDetails) {
+      return res.send({ success: false, errMsg: "User not found" });
+    }
+    const userId = UserDetails.dataValues.id;
+    const orderId = `ORD-${Date.now()}`;
+    for(const product of products){
+      const {productId} = product;
+      const productDetails = await model.ProductDetails.findOne({
+        where : {id : productId}
+      });
+      if(productDetails){
+        let unitPrice = productDetails.dataValues.Price;
+        if(productDetails.dataValues.IsDiscounted){
+          unitPrice = unitPrice - (unitPrice * productDetails.dataValues.DiscountPercentage) / 100;
+        }
+        const quantity = product.quantity;
+        const discountedAmount = productDetails.dataValues.IsDiscounted ? (unitPrice * quantity * productDetails.dataValues.DiscountPercentage) / 100 : 0;
+        await model.Order.create({
+          OrderID : orderId,
+          Quantity : quantity,
+          UnitPrice : unitPrice,
+          DiscountedAmount : discountedAmount,
+          OrderDate : new Date(),
+          Status : "Pending",
+          productId : productId,
+          userId : userId
+        });
+      }
+    }
+    // clear cart after placing order
+    await model.AddToCart.destroy({
+      where: { UserId: userId },
+    });
+    return res.send({success : true, data : "Order placed successfully", orderId: orderId});
+  } catch (error) {
+    console.log("Error placing order:", error);
+    return res.send({ success: false, errMsg: "Something went wrong" });
+  }
+};
+
+export const getOrderDetails = async (req: Request, res: Response) => {
+  try {
+    const {userEmail} = req.body;
+    const UserDetails = await model.UserDetails.findOne({
+      where: { Email: userEmail },
+    });
+    if (!UserDetails) {
+      return res.send({ success: false, errMsg: "User not found" });
+    }
+    const userId = UserDetails.dataValues.id;
+    const orders = await model.Order.findAll({
+      where: { userId: userId },
+      include : [
+        {
+          model : model.ProductDetails,
+          as : "product"
+        }
+      ]
+    });
+    for(const order of orders){
+      const product = order.dataValues.product;
+      if(product){
+        const { ImageKey } = product.dataValues;
+        const response = await getImages(ImageKey.split("|")[0] || "");
+        for(const key of ImageKey.split("|")){
+          const response = await getImages(key);
+          if (response && response.success) {
+            if (!product.dataValues.ImageURLs) {
+              product.dataValues.ImageURLs = [];
+            }
+            product.dataValues.ImageURLs.push(response.data);
+          }
+        }
+      }
+    }
+    return res.send({success : true, data : orders});
+  } catch (error) {
+    console.log("Error fetching order details:", error);
+    return res.send({ success: false, errMsg: "Something went wrong" });
+  }
+};
+
+export const getProductDetailsById = async (req: Request, res: Response) => {
+  try {
+    const { productId } = req.query;
+    const productDetails = await model.ProductDetails.findOne({
+      where: { id: productId },
+    });
+    if (!productDetails) {
+      return res.send({ success: false, errMsg: "Product not found" });
+    }
+    const { ImageKey } = productDetails.dataValues;
+    const imageUrls = [];
+    for (const key of ImageKey.split("|")) {
+      const response = await getImages(key);
+      if (response && response.success) {
+        imageUrls.push(response.data);
+      }
+    }
+    productDetails.dataValues.ImageURLs = imageUrls;
+    return res.send({ success: true, data: productDetails });
+  } catch (error) {
+    console.log("Error fetching product details by ID:", error);
+    return res.send({ success: false, errMsg: "Something went wrong" });
+  }
+};
