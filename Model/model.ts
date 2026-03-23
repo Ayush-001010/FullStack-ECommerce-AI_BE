@@ -1,3 +1,4 @@
+import AddToCart from "./Table/AddToCart";
 import BannerDetails from "./Table/BannerDetails";
 import CategoryDetails from "./Table/CategoryDetails";
 import Favorites from "./Table/Favorites";
@@ -10,6 +11,7 @@ interface IModel {
     CategoryDetails : typeof CategoryDetails;
     ProductDetails : typeof ProductDetails;
     Favorites : typeof Favorites;
+    AddToCart : typeof AddToCart;
 }
 
 const model : IModel = {
@@ -17,7 +19,8 @@ const model : IModel = {
     BannerDetails,
     CategoryDetails,
     ProductDetails,
-    Favorites
+    Favorites,
+    AddToCart
 }
 
 CategoryDetails.hasMany(ProductDetails, {

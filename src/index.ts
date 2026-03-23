@@ -21,15 +21,21 @@ const elasticSearchSetup = async () => {
     const indexName = "products";
     const exist = await es.indices.exists({ index: indexName });
     if(!exist) {
-      await es.indices.create({ index: indexName , body : {
-        mappings:{
-          properties : {
-            Name : { type : "text" },
-            Description : { type : "text" },
-            Price : { type : "float" }
-          }
-        }
-      } });
+      await es.indices.create({
+        index: indexName,
+        mappings: {
+          properties: {
+            id: { type: "long" },
+            Name: { type: "text" },
+            Description: { type: "text" },
+            Price: { type: "double" },
+            ImageKey: { type: "keyword" },
+            IsDiscounted: { type: "boolean" },
+            DiscountPercentage: { type: "integer" },
+            IsBestSeller: { type: "boolean" },
+          },
+        },
+      });
     }
     const data = await model.ProductDetails.findAll();
     const bulkData = data.map((item) => ({
@@ -37,12 +43,16 @@ const elasticSearchSetup = async () => {
       Name: item.dataValues.Name,
       Description: item.dataValues.Description,
       Price: item.dataValues.Price,
+      ImageKey: item.dataValues.ImageKey,
+      IsDiscounted: item.dataValues.IsDiscounted,
+      DiscountPercentage: item.dataValues.DiscountPercentage,
+      IsBestSeller: item.dataValues.IsBestSeller,
     }));
     
     await es.helpers.bulk({
-      datasource: bulkData,
+      datasource: bulkData, // must include `id`
       onDocument(doc) {
-        return { index: { _index: indexName, _id: String(doc.id) } };
+        return { index: { _index: "products", _id: String(doc.id) } };
       },
       refreshOnCompletion: true,
     });

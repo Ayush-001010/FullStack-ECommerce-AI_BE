@@ -50,6 +50,10 @@ const ProductDetails = sequelize.define('ProductDetails',{
     IsActive:{
         type:DataTypes.BOOLEAN,
         defaultValue:true
+    },
+    SubCategory : {
+        type:DataTypes.STRING,
+        allowNull:false
     }
 });
 
